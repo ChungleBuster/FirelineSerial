@@ -1,39 +1,58 @@
-
-import java.security.KeyStore;
 import java.util.concurrent.RecursiveTask;
 
+/**
+ * Divide-and-conquer Fork/Join task that performs one timestep update for a
+ * rectangular strip of rows of a {@link FireMap} grid.
+ *
+ * The strip is recursively split in half by row until it is no larger than
+ * {@link #SEQUENTIAL_CUTOFF} rows, at which point it is updated directly via
+ * {@link FireMap#updateRegion}. Since disjoint row ranges only read the
+ * shared current-state arrays and only write to their own rows of the
+ * next-state arrays, sibling tasks can safely run concurrently.
+ */
+public class FireTask extends RecursiveTask<FireMap.StepResult> {
 
-public class FireTask extends RecursiveTask<StepResult>{
-    static int SEQUENTIAL_CUTOFF = 1000;
-    private int hi;
-    private int lo;
-    private double[][] newTemp;
-    private double[][] currentTemp;
+    static int SEQUENTIAL_CUTOFF = 5000;
 
-    public FireTask(double[][] currentTemperature, int l, int h) {
-        this.currentTemp = currentTemperature;
-        this.lo = l;
-        this.hi = h;
+    private final FireMap map;
+    private final FireMap.Mode mode;
+    private final int rowStart;
+    private final int rowEnd;
+    private final int columnStart;
+    private final int columnEnd;
+
+    public FireTask(FireMap map,
+                     FireMap.Mode mode,
+                     int rowStart,
+                     int rowEnd,
+                     int columnStart,
+                     int columnEnd) {
+        this.map = map;
+        this.mode = mode;
+        this.rowStart = rowStart;
+        this.rowEnd = rowEnd;
+        this.columnStart = columnStart;
+        this.columnEnd = columnEnd;
     }
 
-    public double[][] getNewTemp(){
-        return this.newTemp;
-    }
+    @Override
+    protected FireMap.StepResult compute() {
+        int numberOfRows = rowEnd - rowStart;
 
-    public void run(){
-        if ((hi -lo) < SEQUENTIAL_CUTOFF){
-            for (int i = lo; i < hi; i++){
-                for (int j = 0; j < arr[i].length; j++){
-                        double neighbourAverage =
-                        (currentTemperature[i - 1][j]
-                         + currentTemperature[i + 1][j]
-                         + currentTemperature[i][j - 1]
-                         + currentTemperature[i][j + 1]) / 4.0;
-                }
-            }
+        if (numberOfRows <= SEQUENTIAL_CUTOFF) {
+            return map.updateRegion(mode, rowStart, rowEnd, columnStart, columnEnd);
         }
+
+        int middleRow = rowStart + numberOfRows / 2;
+        FireTask topHalf = new FireTask(
+                map, mode, rowStart, middleRow, columnStart, columnEnd);
+        FireTask bottomHalf = new FireTask(
+                map, mode, middleRow, rowEnd, columnStart, columnEnd);
+
+        topHalf.fork();
+        FireMap.StepResult bottomResult = bottomHalf.compute();
+        FireMap.StepResult topResult = topHalf.join();
+
+        return FireMap.StepResult.combine(topResult, bottomResult);
     }
-
-    
-
 }
