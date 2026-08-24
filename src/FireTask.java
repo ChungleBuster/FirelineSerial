@@ -12,7 +12,7 @@ import java.util.concurrent.RecursiveTask;
  */
 public class FireTask extends RecursiveTask<FireMap.StepResult> {
 
-    static int SEQUENTIAL_CUTOFF = 5000;
+    static int SEQUENTIAL_CUTOFF = 50000;
 
     private final FireMap map;
     private final FireMap.Mode mode;

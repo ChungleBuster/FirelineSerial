@@ -1,0 +1,1550 @@
+<title>Fireline Benchmark Dashboard</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --axis:           #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --accent:         #2a78d6;
+    --status-good:    #0ca30c;
+    --status-critical:#d03b3b;
+    --series-1: #2a78d6; /* blue    */
+    --series-2: #eb6834; /* orange  */
+    --series-3: #1baf7a; /* aqua    */
+    --series-4: #eda100; /* yellow  */
+    --series-5: #e87ba4; /* magenta */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255,255,255,0.10);
+      --accent:         #3987e5;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255,255,255,0.10);
+    --accent:         #3987e5;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+  }
+
+  * { box-sizing: border-box; }
+
+  .viz-root {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 26px 22px 40px;
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+
+  .dash-header { margin-bottom: 18px; }
+  .dash-header h1 {
+    font-size: 21px;
+    font-weight: 680;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .dash-header .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+    max-width: 72ch;
+  }
+
+  /* ---------- tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 22px;
+  }
+  .tab-btn {
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 620;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 4px;
+    margin-right: 18px;
+    cursor: pointer;
+    transform: translateY(1px);
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn[aria-selected="true"] {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+  }
+  .tab-panel[hidden] { display: none; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 26px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 2px;
+    line-height: 1.5;
+  }
+
+  .provenance {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin: 2px 0 14px;
+    line-height: 1.5;
+  }
+  .provenance code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    background: var(--gridline);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .notice {
+    display: none;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0 0 14px;
+    line-height: 1.5;
+  }
+  .notice.visible { display: block; }
+  .notice.error { color: var(--status-critical); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex: none;
+  }
+  .legend-note { color: var(--text-muted); }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 550;
+    color: var(--text-secondary);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 11px;
+    cursor: pointer;
+  }
+  .btn:hover { color: var(--text-primary); }
+  .btn:active { transform: translateY(1px); }
+
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+    flex: none;
+  }
+  .view-toggle button {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 550;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .view-toggle button[aria-pressed="true"] {
+    background: var(--surface-1);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .view-toggle button:hover { color: var(--text-primary); }
+
+  .chart-frame {
+    position: relative;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px 10px;
+    overflow-x: auto;
+  }
+
+  .chart-frame.drag-over {
+    border: 1px dashed var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface-1));
+  }
+
+  .drop-hint {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-1) 85%);
+    border-radius: 11px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .chart-frame.drag-over .drop-hint { display: flex; }
+  .drop-hint-icon { font-size: 22px; color: var(--accent); }
+  .drop-hint-text { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+  .chart-scroll { min-width: 640px; }
+
+  svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .axis-title { font-size: 11.5px; fill: var(--text-muted); }
+  .tick-label { font-size: 10.5px; fill: var(--text-muted); }
+  .group-label { font-size: 12px; font-weight: 600; fill: var(--text-secondary); }
+  .cutoff-label { font-size: 8.3px; fill: var(--text-muted); }
+  .value-label { font-size: 10.5px; font-weight: 600; fill: var(--text-secondary); }
+  .ref-label { font-size: 9.5px; fill: var(--text-muted); }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .baseline { stroke: var(--axis); stroke-width: 1; }
+  .ref-line { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 4 4; }
+  .whisker { stroke: var(--text-secondary); stroke-width: 1.5; }
+  .empty-label { font-size: 13px; fill: var(--text-muted); }
+
+  .bar-hit { cursor: pointer; }
+  .bar-hit:focus { outline: none; }
+  .bar-hit:focus rect.focus-ring,
+  .bar-hit:focus path.focus-ring {
+    stroke: var(--text-primary);
+    stroke-width: 2;
+  }
+
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--text-primary);
+    color: var(--surface-1);
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.08s ease, transform 0.08s ease;
+    z-index: 50;
+    max-width: 270px;
+    white-space: nowrap;
+  }
+  .tooltip.visible { opacity: 1; transform: translateY(0); }
+  .tooltip b { font-weight: 650; }
+  .tooltip .tt-muted { opacity: 0.72; }
+
+  /* ---------- stats cards ---------- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+  }
+  .stat-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .stat-card-n { font-weight: 650; font-size: 13.5px; color: var(--text-primary); }
+  .stat-list {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 8px;
+    margin: 0 0 10px;
+    font-size: 12px;
+  }
+  .stat-list dt { color: var(--text-muted); grid-column: 1; }
+  .stat-list dd {
+    margin: 0;
+    grid-column: 2;
+    text-align: right;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .stat-compare {
+    font-size: 11.5px;
+    line-height: 1.45;
+    padding-top: 9px;
+    border-top: 1px solid var(--gridline);
+  }
+  .compare-badge { font-weight: 700; }
+  .compare-badge.faster { color: var(--status-good); }
+  .compare-badge.slower { color: var(--status-critical); }
+  .compare-detail { color: var(--text-muted); }
+
+  .table-wrap { display: none; overflow-x: auto; }
+  .table-wrap.visible { display: block; }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.data-table th,
+  table.data-table td {
+    text-align: right;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--gridline);
+    white-space: nowrap;
+  }
+  table.data-table th:first-child,
+  table.data-table td:first-child { text-align: left; }
+  table.data-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  table.data-table td { color: var(--text-secondary); }
+  table.data-table td.emph { color: var(--text-primary); font-weight: 600; }
+  .swatch-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+  }
+  .mono-cmd {
+    text-align: left;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.2px;
+  }
+
+  .foot-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  input[type="file"] { display: none; }
+</style>
+
+<div class="viz-root">
+  <div class="dash-header">
+    <h1>Fireline parallel benchmark dashboard</h1>
+    <p class="subtitle">FirelineParallel vs FirelineSerial timing, and the FireTask sequential-cutoff sweep, from CSV files in <code>test_data/</code>.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Benchmark views">
+    <button type="button" class="tab-btn" role="tab" id="tabbtn-speedup" aria-selected="true" aria-controls="tab-speedup" tabindex="0">Serial vs parallel</button>
+    <button type="button" class="tab-btn" role="tab" id="tabbtn-cutoff" aria-selected="false" aria-controls="tab-cutoff" tabindex="-1">Cutoff sweep</button>
+  </div>
+
+  <!-- ================= TAB: SERIAL VS PARALLEL ================= -->
+  <section class="tab-panel" id="tab-speedup" role="tabpanel" aria-labelledby="tabbtn-speedup">
+    <p class="subtitle">Speedup <b>S = T&#8321; / T&#8342;</b> (serial time over parallel time) for matched (grid size, seed) runs. S &gt; 1 means the parallel version was faster.</p>
+    <p class="provenance" id="sp-provenance"></p>
+    <p class="notice" id="sp-notice" aria-live="polite"></p>
+
+    <div class="toolbar">
+      <div class="legend" id="sp-legend"></div>
+      <div class="toolbar-actions">
+        <div class="view-toggle" role="group" aria-label="Chart or table view">
+          <button type="button" id="sp-btn-chart" aria-pressed="true">Chart</button>
+          <button type="button" id="sp-btn-table" aria-pressed="false">Table</button>
+        </div>
+        <button type="button" class="btn" id="sp-btn-load">Load file&hellip;</button>
+        <button type="button" class="btn" id="sp-btn-reset">Reset to default</button>
+        <button type="button" class="btn" id="sp-btn-export-png">Save chart as PNG&hellip;</button>
+        <input type="file" id="sp-file-input" accept=".txt,.csv,text/plain,text/csv">
+      </div>
+    </div>
+
+    <div class="chart-frame" id="sp-chart-frame">
+      <div class="drop-hint">
+        <span class="drop-hint-icon">&#8681;</span>
+        <span class="drop-hint-text">Drop a results file to update the chart</span>
+      </div>
+      <div class="chart-scroll">
+        <svg class="chart" id="sp-chart-svg" viewBox="0 0 960 460" role="img" aria-label="Bar chart of mean speedup by grid size"></svg>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="sp-table-wrap">
+      <table class="data-table" id="sp-table">
+        <thead>
+          <tr>
+            <th>n (rows &times; cols)</th>
+            <th>Seed</th>
+            <th>Parallel (ms)</th>
+            <th>Serial (ms)</th>
+            <th>Speedup</th>
+            <th>Converged</th>
+            <th class="mono-cmd">Reproduce &mdash; parallel</th>
+            <th class="mono-cmd">Reproduce &mdash; serial</th>
+          </tr>
+        </thead>
+        <tbody id="sp-table-body"></tbody>
+      </table>
+    </div>
+
+    <p class="section-label">Statistics by grid size</p>
+    <div class="stats-grid" id="sp-stats"></div>
+
+    <p class="foot-note">One bar per grid size shows the mean speedup across matched seeds, with a &plusmn;1&nbsp;SD whisker; the dashed line marks S&nbsp;=&nbsp;1 (no speedup). Hover or focus a bar for exact values. Drag a results file (same CSV columns as <code>serial_vs_parallel_sweep.sh</code> writes) onto the chart, or use &ldquo;Load file&hellip;&rdquo;, to replace the data below. &ldquo;Save chart as PNG&hellip;&rdquo; renders the current chart to an image file &mdash; a browser page cannot silently write to an arbitrary folder, so save (or move) it into <code>test_data/graphs/</code> yourself.</p>
+  </section>
+
+  <!-- ================= TAB: CUTOFF SWEEP ================= -->
+  <section class="tab-panel" id="tab-cutoff" role="tabpanel" aria-labelledby="tabbtn-cutoff" hidden>
+    <p class="subtitle">Core simulation time for <b>FirelineParallel</b> across grid sizes, at different values of <code>FireTask.SEQUENTIAL_CUTOFF</code> (rows per leaf task).</p>
+    <p class="provenance" id="co-provenance"></p>
+    <p class="notice" id="co-notice" aria-live="polite"></p>
+
+    <div class="toolbar">
+      <div class="legend" id="co-legend"></div>
+      <div class="toolbar-actions">
+        <div class="view-toggle" role="group" aria-label="Chart or table view">
+          <button type="button" id="co-btn-chart" aria-pressed="true">Chart</button>
+          <button type="button" id="co-btn-table" aria-pressed="false">Table</button>
+        </div>
+        <button type="button" class="btn" id="co-btn-load">Load file&hellip;</button>
+        <button type="button" class="btn" id="co-btn-reset">Reset to default</button>
+        <button type="button" class="btn" id="co-btn-export-png">Save chart as PNG&hellip;</button>
+        <input type="file" id="co-file-input" accept=".txt,.csv,text/plain,text/csv">
+      </div>
+    </div>
+
+    <div class="chart-frame" id="co-chart-frame">
+      <div class="drop-hint">
+        <span class="drop-hint-icon">&#8681;</span>
+        <span class="drop-hint-text">Drop a results file to update the chart</span>
+      </div>
+      <div class="chart-scroll">
+        <svg class="chart" id="co-chart-svg" viewBox="0 0 960 460" role="img" aria-label="Grouped bar chart of core simulation time in seconds by grid size and sequential cutoff"></svg>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="co-table-wrap">
+      <table class="data-table" id="co-table">
+        <thead>
+          <tr>
+            <th>n (rows &times; cols)</th>
+            <th>Cutoff</th>
+            <th>Timesteps</th>
+            <th>Converged</th>
+            <th>Time (ms)</th>
+            <th>Time (s)</th>
+            <th class="mono-cmd">Reproduce</th>
+          </tr>
+        </thead>
+        <tbody id="co-table-body"></tbody>
+      </table>
+    </div>
+
+    <p class="foot-note">Bars are grouped by grid size (n&times;n) along the x-axis; within a group, colour and the small label above each bar's tip identify the sequential cutoff. Hover or focus a bar for exact values. Drag a results file (same CSV columns as <code>cutoff_sweep.sh</code> writes) onto the chart, or use &ldquo;Load file&hellip;&rdquo;, to replace the data below. &ldquo;Save chart as PNG&hellip;&rdquo; renders the current chart to an image file &mdash; a browser page cannot silently write to an arbitrary folder, so save (or move) it into <code>test_data/graphs/</code> yourself.</p>
+  </section>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+</div>
+
+<script>
+(function () {
+  var svgNS = "http://www.w3.org/2000/svg";
+  var SERIES_VARS = ["--series-1", "--series-2", "--series-3", "--series-4", "--series-5"];
+  var tooltip = document.getElementById("tooltip");
+
+  // ================= shared helpers =================
+
+  function splitCsvLine(line) {
+    var result = [], cur = "", inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQuotes = false; }
+        } else { cur += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { result.push(cur); cur = ""; }
+        else { cur += ch; }
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+
+  function parseCSV(text) {
+    var lines = text.split(/\r\n|\r|\n/);
+    var header = null;
+    var rows = [];
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i];
+      if (!raw || /^\s*#/.test(raw) || !raw.trim()) continue;
+      var cols = splitCsvLine(raw);
+      if (!header) { header = cols.map(function (c) { return c.trim().toLowerCase(); }); continue; }
+      if (cols.length < header.length) continue;
+      var obj = {};
+      for (var j = 0; j < header.length; j++) obj[header[j]] = cols[j];
+      rows.push(obj);
+    }
+    return { header: header, rows: rows };
+  }
+
+  function el(name, attrs) {
+    var e = document.createElementNS(svgNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function roundedTopBarPath(x, y, w, h, r) {
+    if (h < r) r = Math.max(0, h);
+    var yb = y + h;
+    return [
+      "M", x, y + r,
+      "Q", x, y, x + r, y,
+      "L", x + w - r, y,
+      "Q", x + w, y, x + w, y + r,
+      "L", x + w, yb,
+      "L", x, yb,
+      "Z"
+    ].join(" ");
+  }
+
+  // "nice" axis max/step so gridlines land on round numbers for any data scale
+  function niceAxis(maxVal) {
+    if (!isFinite(maxVal) || maxVal <= 0) return { max: 1, step: 0.2 };
+    var rawStep = maxVal / 6;
+    var mag = Math.pow(10, Math.floor(Math.log(rawStep) / Math.LN10));
+    var norm = rawStep / mag;
+    var niceNorm = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+    var step = niceNorm * mag;
+    var max = Math.ceil((maxVal * 1.12) / step) * step;
+    return { max: max, step: step };
+  }
+
+  function makeNotice(noticeEl) {
+    return {
+      show: function (text, isError) {
+        noticeEl.textContent = text;
+        noticeEl.className = "notice visible" + (isError ? " error" : "");
+      },
+      clear: function () {
+        noticeEl.textContent = "";
+        noticeEl.className = "notice";
+      }
+    };
+  }
+
+  // Copies live computed style (post-CSS/var resolution) onto a parallel
+  // clone tree, so an exported SVG has no dependency on the page's
+  // external <style> block or CSS custom properties.
+  function inlineComputedStyle(srcEl, dstEl) {
+    var props = ["fill", "stroke", "stroke-width", "stroke-dasharray", "font-size", "font-family", "font-weight", "text-anchor", "opacity"];
+    var cs = window.getComputedStyle(srcEl);
+    for (var i = 0; i < props.length; i++) {
+      var val = cs.getPropertyValue(props[i]);
+      if (val) dstEl.style.setProperty(props[i], val);
+    }
+    var srcKids = srcEl.children, dstKids = dstEl.children;
+    for (var k = 0; k < srcKids.length; k++) inlineComputedStyle(srcKids[k], dstKids[k]);
+  }
+
+  function svgToPngBlob(svgEl, scale) {
+    return new Promise(function (resolve, reject) {
+      var vb = svgEl.viewBox.baseVal;
+      var w = vb && vb.width ? vb.width : svgEl.clientWidth || 960;
+      var h = vb && vb.height ? vb.height : svgEl.clientHeight || 460;
+
+      var clone = svgEl.cloneNode(true);
+      inlineComputedStyle(svgEl, clone);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("width", w);
+      clone.setAttribute("height", h);
+
+      var bg = document.createElementNS(svgNS, "rect");
+      bg.setAttribute("x", 0); bg.setAttribute("y", 0);
+      bg.setAttribute("width", w); bg.setAttribute("height", h);
+      var surface = getComputedStyle(document.querySelector(".viz-root")).getPropertyValue("--surface-1").trim() || "#ffffff";
+      bg.setAttribute("fill", surface);
+      clone.insertBefore(bg, clone.firstChild);
+
+      var svgString = new XMLSerializer().serializeToString(clone);
+      var svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      var url = URL.createObjectURL(svgBlob);
+
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = w * scale;
+        canvas.height = h * scale;
+        var ctx = canvas.getContext("2d");
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob); else reject(new Error("Canvas produced no image data."));
+        }, "image/png");
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("Could not rasterise the chart SVG."));
+      };
+      img.src = url;
+    });
+  }
+
+  function timestampSlug() {
+    var d = new Date();
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      "_" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // Wires: chart/table toggle, load-file (drag&drop + click-to-browse),
+  // reset-to-default and PNG export for one tab. `cfg` supplies the
+  // tab-specific bits (elements, default CSV text, model builder, renderer).
+  function wireTab(cfg) {
+    var notice = makeNotice(cfg.noticeEl);
+
+    function loadFromText(text, sourceText) {
+      try {
+        var parsed = parseCSV(text);
+        var model = cfg.buildModel(parsed);
+        cfg.render(model, sourceText, notice);
+      } catch (err) {
+        notice.show("Couldn't load '" + sourceText + "': " + err.message, true);
+      }
+    }
+    function loadDefault() { loadFromText(cfg.defaultCsv, "embedded default dataset"); }
+
+    // chart/table toggle
+    cfg.btnChart.addEventListener("click", function () {
+      cfg.chartFrame.style.display = "";
+      cfg.tableWrap.classList.remove("visible");
+      cfg.btnChart.setAttribute("aria-pressed", "true");
+      cfg.btnTable.setAttribute("aria-pressed", "false");
+    });
+    cfg.btnTable.addEventListener("click", function () {
+      cfg.chartFrame.style.display = "none";
+      cfg.tableWrap.classList.add("visible");
+      cfg.btnChart.setAttribute("aria-pressed", "false");
+      cfg.btnTable.setAttribute("aria-pressed", "true");
+    });
+
+    // file loading
+    function readFile(file) {
+      var reader = new FileReader();
+      reader.onload = function () { loadFromText(String(reader.result), file.name); };
+      reader.onerror = function () { notice.show("Couldn't read '" + file.name + "'.", true); };
+      reader.readAsText(file);
+    }
+    cfg.btnLoad.addEventListener("click", function () { cfg.fileInput.click(); });
+    cfg.fileInput.addEventListener("change", function () {
+      if (cfg.fileInput.files && cfg.fileInput.files[0]) readFile(cfg.fileInput.files[0]);
+      cfg.fileInput.value = "";
+    });
+    cfg.btnReset.addEventListener("click", loadDefault);
+
+    ["dragenter", "dragover"].forEach(function (evtName) {
+      cfg.chartFrame.addEventListener(evtName, function (e) {
+        e.preventDefault(); e.stopPropagation();
+        cfg.chartFrame.classList.add("drag-over");
+      });
+    });
+    ["dragleave", "dragend"].forEach(function (evtName) {
+      cfg.chartFrame.addEventListener(evtName, function (e) {
+        e.preventDefault();
+        cfg.chartFrame.classList.remove("drag-over");
+      });
+    });
+    cfg.chartFrame.addEventListener("drop", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      cfg.chartFrame.classList.remove("drag-over");
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files[0]) readFile(files[0]);
+    });
+
+    // PNG export
+    async function exportPng() {
+      if (cfg.chartFrame.style.display === "none") {
+        notice.show("Switch to the Chart view before saving a PNG.", true);
+        return;
+      }
+      var filename = cfg.filePrefix + "-" + timestampSlug() + ".png";
+      var blob;
+      try {
+        blob = await svgToPngBlob(cfg.svg, 2);
+      } catch (err) {
+        notice.show("PNG export failed: " + err.message, true);
+        return;
+      }
+      if (window.showSaveFilePicker) {
+        try {
+          var handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            startIn: "desktop",
+            types: [{ description: "PNG image", accept: { "image/png": [".png"] } }]
+          });
+          var writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          notice.show("Saved " + filename + ". If you didn't navigate there in the dialog, move it into A1/test_data/graphs/.", false);
+          return;
+        } catch (pickErr) {
+          if (pickErr && pickErr.name === "AbortError") return;
+        }
+      }
+      downloadBlob(blob, filename);
+      notice.show("Downloaded " + filename + " to your browser's default downloads location — move it into A1/test_data/graphs/.", false);
+    }
+    cfg.btnExportPng.addEventListener("click", function () { exportPng(); });
+
+    loadDefault();
+  }
+
+  // ================= tab switching =================
+  var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  function activateTab(btn, moveFocus) {
+    tabButtons.forEach(function (b) {
+      var active = b === btn;
+      b.setAttribute("aria-selected", active ? "true" : "false");
+      b.tabIndex = active ? 0 : -1;
+      document.getElementById(b.getAttribute("aria-controls")).hidden = !active;
+    });
+    if (moveFocus) btn.focus();
+  }
+  tabButtons.forEach(function (b, i) {
+    b.addEventListener("click", function () { activateTab(b, false); });
+    b.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      e.preventDefault();
+      var next = tabButtons[(i + (e.key === "ArrowRight" ? 1 : tabButtons.length - 1)) % tabButtons.length];
+      activateTab(next, true);
+    });
+  });
+
+    // ================= tab: cutoff sweep =================
+  (function () {
+    var DEFAULT_CO_CSV = [
+    "# Cutoff sweep - embedded default",
+    "# Fixed simulation parameters: seed=42 mode=wildfire landscape=grass max_steps=50000 tolerance=0.05",
+    "implementation,cutoff,rows,columns,seed,mode,landscape,max_steps,tolerance,timesteps,converged,burning_cells,cells_burned,max_peak_temperature,max_temperature_change,core_ms,command",
+    'parallel,1000,100,100,42,wildfire,grass,50000,0.05,1432,yes,0,9604,615.508,0.049431,377.605,"java -cp bin FirelineParallel 100 100 42 wildfire output/cutoff_1000_100x100 50000 0.05 grass"',
+    'parallel,1000,200,200,42,wildfire,grass,50000,0.05,3057,yes,0,39204,615.508,0.049833,2362.728,"java -cp bin FirelineParallel 200 200 42 wildfire output/cutoff_1000_200x200 50000 0.05 grass"',
+    'parallel,1000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,6907.577,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_1000_300x300 50000 0.05 grass"',
+    'parallel,1000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,17737.671,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_1000_400x400 50000 0.05 grass"',
+    'parallel,1000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,30252.875,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_1000_500x500 50000 0.05 grass"',
+    'parallel,5000,100,100,42,wildfire,grass,50000,0.05,1432,yes,0,9604,615.508,0.049431,559.513,"java -cp bin FirelineParallel 100 100 42 wildfire output/cutoff_5000_100x100 50000 0.05 grass"',
+    'parallel,5000,200,200,42,wildfire,grass,50000,0.05,3057,yes,0,39204,615.508,0.049833,2655.739,"java -cp bin FirelineParallel 200 200 42 wildfire output/cutoff_5000_200x200 50000 0.05 grass"',
+    'parallel,5000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,7273.188,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_5000_300x300 50000 0.05 grass"',
+    'parallel,5000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,15195.359,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_5000_400x400 50000 0.05 grass"',
+    'parallel,5000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,29112.713,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_5000_500x500 50000 0.05 grass"',
+    'parallel,10000,100,100,42,wildfire,grass,50000,0.05,1432,yes,0,9604,615.508,0.049431,376.243,"java -cp bin FirelineParallel 100 100 42 wildfire output/cutoff_10000_100x100 50000 0.05 grass"',
+    'parallel,10000,200,200,42,wildfire,grass,50000,0.05,3057,yes,0,39204,615.508,0.049833,2720.468,"java -cp bin FirelineParallel 200 200 42 wildfire output/cutoff_10000_200x200 50000 0.05 grass"',
+    'parallel,10000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,6876.328,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_10000_300x300 50000 0.05 grass"',
+    'parallel,10000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,14965.583,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_10000_400x400 50000 0.05 grass"',
+    'parallel,10000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,29088.645,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_10000_500x500 50000 0.05 grass"',
+    'parallel,50000,100,100,42,wildfire,grass,50000,0.05,1432,yes,0,9604,615.508,0.049431,402.255,"java -cp bin FirelineParallel 100 100 42 wildfire output/cutoff_50000_100x100 50000 0.05 grass"',
+    'parallel,50000,200,200,42,wildfire,grass,50000,0.05,3057,yes,0,39204,615.508,0.049833,2681.269,"java -cp bin FirelineParallel 200 200 42 wildfire output/cutoff_50000_200x200 50000 0.05 grass"',
+    'parallel,50000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,6779.476,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_50000_300x300 50000 0.05 grass"',
+    'parallel,50000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,15424.019,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_50000_400x400 50000 0.05 grass"',
+    'parallel,50000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,29302.520,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_50000_500x500 50000 0.05 grass"',
+    'parallel,100000,100,100,42,wildfire,grass,50000,0.05,1432,yes,0,9604,615.508,0.049431,405.923,"java -cp bin FirelineParallel 100 100 42 wildfire output/cutoff_100000_100x100 50000 0.05 grass"',
+    'parallel,100000,200,200,42,wildfire,grass,50000,0.05,3057,yes,0,39204,615.508,0.049833,2241.741,"java -cp bin FirelineParallel 200 200 42 wildfire output/cutoff_100000_200x200 50000 0.05 grass"',
+    'parallel,100000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,6765.740,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_100000_300x300 50000 0.05 grass"',
+    'parallel,100000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,16285.918,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_100000_400x400 50000 0.05 grass"',
+    'parallel,100000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,33796.376,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_100000_500x500 50000 0.05 grass"'
+  ].join("\n");
+
+    function cutoffLabel(c) { return c.toLocaleString(); }
+    function cutoffShort(c) {
+      if (c >= 1000) return (c / 1000).toString().replace(/\.0$/, "") + "k";
+      return String(c);
+    }
+
+    function buildModel(parsed) {
+      if (!parsed.header || !parsed.rows.length) {
+        throw new Error("No data rows found (expected a CSV header row plus data rows).");
+      }
+      var required = ["implementation", "cutoff", "rows", "timesteps", "converged", "core_ms"];
+      for (var r = 0; r < required.length; r++) {
+        if (parsed.header.indexOf(required[r]) === -1) {
+          throw new Error("Missing required column '" + required[r] + "'.");
+        }
+      }
+
+      var rows = [];
+      parsed.rows.forEach(function (row) {
+        if (!row.implementation || !/parallel/i.test(row.implementation)) return;
+        var n = parseInt(row.rows, 10);
+        var cutoff = parseInt(row.cutoff, 10);
+        var ms = parseFloat(row.core_ms);
+        if (!isFinite(n) || !isFinite(cutoff) || !isFinite(ms)) return;
+        rows.push({
+          n: n,
+          cutoff: cutoff,
+          ms: ms,
+          timesteps: row.timesteps,
+          converged: (row.converged || "").trim().toLowerCase() === "yes",
+          command: (row.command || "").trim(),
+          mode: row.mode, landscape: row.landscape, seed: row.seed,
+          max_steps: row.max_steps, tolerance: row.tolerance
+        });
+      });
+
+      if (!rows.length) {
+        throw new Error("No 'parallel' rows with numeric cutoff/rows/core_ms found. " +
+          "This chart only plots the FirelineParallel cutoff sweep.");
+      }
+
+      var cutoffSet = [];
+      rows.forEach(function (row) { if (cutoffSet.indexOf(row.cutoff) === -1) cutoffSet.push(row.cutoff); });
+      cutoffSet.sort(function (a, b) { return a - b; });
+      var truncatedCutoffs = false;
+      if (cutoffSet.length > 5) {
+        cutoffSet = cutoffSet.slice(0, 5);
+        truncatedCutoffs = true;
+        rows = rows.filter(function (row) { return cutoffSet.indexOf(row.cutoff) !== -1; });
+      }
+
+      var nSet = [];
+      rows.forEach(function (row) { if (nSet.indexOf(row.n) === -1) nSet.push(row.n); });
+      nSet.sort(function (a, b) { return a - b; });
+
+      var byKey = {};
+      rows.forEach(function (row) {
+        var key = row.n + "|" + row.cutoff;
+        if (!(key in byKey)) byKey[key] = row; // first occurrence wins on duplicates
+      });
+
+      return {
+        cutoffs: cutoffSet,
+        sizes: nSet,
+        byKey: byKey,
+        rowCount: rows.length,
+        truncatedCutoffs: truncatedCutoffs,
+        fixedParams: {
+          mode: rows[0].mode, landscape: rows[0].landscape, seed: rows[0].seed,
+          max_steps: rows[0].max_steps, tolerance: rows[0].tolerance
+        }
+      };
+    }
+
+    var svg = document.getElementById("co-chart-svg");
+    var legend = document.getElementById("co-legend");
+    var tbody = document.getElementById("co-table-body");
+    var provenanceEl = document.getElementById("co-provenance");
+    var chartFrame = document.getElementById("co-chart-frame");
+
+    function reproCmd(row) {
+      if (row.command) return row.command;
+      return "java -cp bin FirelineParallel " + row.n + " " + row.n + " " + (row.seed || "?") +
+        " " + (row.mode || "wildfire") + " output/run_" + row.cutoff + "_" + row.n + "x" + row.n +
+        " " + (row.max_steps || "") + " " + (row.tolerance || "") + " " + (row.landscape || "");
+    }
+
+    function render(model, sourceText, notice) {
+      var cutoffs = model.cutoffs, sizes = model.sizes;
+
+      legend.innerHTML = "";
+      cutoffs.forEach(function (c, i) {
+        var item = document.createElement("span");
+        item.className = "legend-item";
+        var sw = document.createElement("span");
+        sw.className = "legend-swatch";
+        sw.style.background = "var(" + SERIES_VARS[i] + ")";
+        var label = document.createElement("span");
+        label.textContent = "Cutoff " + cutoffLabel(c);
+        item.appendChild(sw);
+        item.appendChild(label);
+        legend.appendChild(item);
+      });
+
+      var fp = model.fixedParams;
+      var fixedBits = [];
+      if (fp.mode) fixedBits.push("mode " + fp.mode);
+      if (fp.landscape) fixedBits.push("landscape " + fp.landscape);
+      if (fp.seed !== undefined) fixedBits.push("seed " + fp.seed);
+      if (fp.max_steps) fixedBits.push("max-steps " + fp.max_steps);
+      if (fp.tolerance) fixedBits.push("tolerance " + fp.tolerance);
+      provenanceEl.innerHTML =
+        "Source: <code>" + sourceText + "</code> — " + model.rowCount + " row(s), " +
+        cutoffs.length + " cutoff(s) × " + sizes.length + " grid size(s)" +
+        (fixedBits.length ? ". Fixed parameters (from first row): " + fixedBits.join(", ") + "." : ".");
+
+      if (model.truncatedCutoffs) {
+        notice.show("This file has more than 5 distinct cutoffs; only the 5 smallest are shown (the colour palette is capped at 5 series).", false);
+      } else {
+        notice.clear();
+      }
+
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      var W = 960, H = 460;
+      var margin = { top: 30, right: 16, bottom: 46, left: 58 };
+      var plotW = W - margin.left - margin.right;
+      var plotH = H - margin.top - margin.bottom;
+      var baselineY = margin.top + plotH;
+
+      if (!sizes.length || !cutoffs.length) {
+        var empty = el("text", { class: "empty-label", x: W / 2, y: H / 2, "text-anchor": "middle" });
+        empty.textContent = "No data to display.";
+        svg.appendChild(empty);
+        tbody.innerHTML = "";
+        return;
+      }
+
+      var maxSeconds = 0;
+      sizes.forEach(function (n) {
+        cutoffs.forEach(function (c) {
+          var row = model.byKey[n + "|" + c];
+          if (row) maxSeconds = Math.max(maxSeconds, row.ms / 1000);
+        });
+      });
+      var axis = niceAxis(maxSeconds);
+      var niceMax = axis.max, tickStep = axis.step;
+
+      function yFor(seconds) { return margin.top + plotH - (seconds / niceMax) * plotH; }
+
+      var groupW = plotW / sizes.length;
+      var barW = Math.max(8, Math.min(22, (groupW - 12) / cutoffs.length - 4));
+      var barGap = 4;
+      var barsTotalW = cutoffs.length * barW + (cutoffs.length - 1) * barGap;
+      var groupPad = Math.max(4, (groupW - barsTotalW) / 2);
+
+      for (var v = 0; v <= niceMax + 1e-9; v += tickStep) {
+        var gy = yFor(v);
+        svg.appendChild(el("line", { class: "gridline", x1: margin.left, x2: margin.left + plotW, y1: gy, y2: gy }));
+        var t = el("text", { class: "tick-label", x: margin.left - 8, y: gy + 3, "text-anchor": "end" });
+        t.textContent = (Math.round(v * 100) / 100).toString();
+        svg.appendChild(t);
+      }
+      var axisTitle = el("text", { class: "axis-title", x: margin.left, y: 12, "text-anchor": "start" });
+      axisTitle.textContent = "Time (seconds)";
+      svg.appendChild(axisTitle);
+
+      svg.appendChild(el("line", { class: "baseline", x1: margin.left, x2: margin.left + plotW, y1: baselineY, y2: baselineY }));
+
+      sizes.forEach(function (n, gi) {
+        var groupX = margin.left + gi * groupW;
+
+        cutoffs.forEach(function (c, ci) {
+          var row = model.byKey[n + "|" + c];
+          var bx = groupX + groupPad + ci * (barW + barGap);
+          if (!row) return;
+
+          var seconds = row.ms / 1000;
+          var by = yFor(seconds);
+          var bh = baselineY - by;
+
+          var g = el("g", {
+            class: "bar-hit", tabindex: "0", role: "img",
+            "aria-label": "n = " + n + " by " + n + ", cutoff " + cutoffLabel(c) + ": " + seconds.toFixed(2) + " seconds"
+          });
+          var ring = el("path", {
+            class: "focus-ring", d: roundedTopBarPath(bx - 2, by - 2, barW + 4, bh + 2, 6),
+            fill: "none", stroke: "transparent", "stroke-width": "2"
+          });
+          var bar = el("path", {
+            d: roundedTopBarPath(bx, by, barW, bh, 4),
+            style: "fill: var(" + SERIES_VARS[ci] + ")"
+          });
+          var cutoffText = el("text", {
+            class: "cutoff-label", "text-anchor": "middle",
+            x: bx + barW / 2, y: by - 6
+          });
+          cutoffText.textContent = cutoffShort(c);
+
+          g.appendChild(ring);
+          g.appendChild(bar);
+          svg.appendChild(g);
+          svg.appendChild(cutoffText);
+
+          function show(evt) {
+            tooltip.innerHTML =
+              "<b>" + n + "×" + n + "</b> · cutoff " + cutoffLabel(c) + "<br>" +
+              seconds.toFixed(2) + " s <span class='tt-muted'>(" + row.ms.toFixed(1) + " ms)</span><br>" +
+              "<span class='tt-muted'>" + row.timesteps + " timesteps, converged: " + (row.converged ? "yes" : "no") + "</span>";
+            tooltip.classList.add("visible");
+            position(evt);
+          }
+          function position(evt) {
+            var pad = 14, px, py;
+            if (evt && evt.clientX !== undefined) { px = evt.clientX; py = evt.clientY; }
+            else { var box = bar.getBoundingClientRect(); px = box.left + box.width / 2; py = box.top; }
+            tooltip.style.left = Math.min(px + pad, window.innerWidth - 270) + "px";
+            tooltip.style.top = Math.max(py - 46, 8) + "px";
+          }
+          function hide() { tooltip.classList.remove("visible"); }
+
+          g.addEventListener("mouseenter", show);
+          g.addEventListener("mousemove", show);
+          g.addEventListener("mouseleave", hide);
+          g.addEventListener("focus", show);
+          g.addEventListener("blur", hide);
+        });
+
+        var glabel = el("text", { class: "group-label", x: groupX + groupW / 2, y: baselineY + 22, "text-anchor": "middle" });
+        glabel.textContent = n + "×" + n;
+        svg.appendChild(glabel);
+      });
+
+      var xAxisTitle = el("text", { class: "axis-title", x: margin.left + plotW / 2, y: H - 6, "text-anchor": "middle" });
+      xAxisTitle.textContent = "n (grid size, n × n)";
+      svg.appendChild(xAxisTitle);
+
+      tbody.innerHTML = "";
+      sizes.forEach(function (n) {
+        cutoffs.forEach(function (c, ci) {
+          var row = model.byKey[n + "|" + c];
+          if (!row) return;
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + n + "×" + n + "</td>" +
+            "<td><span class='swatch-dot' style='background:var(" + SERIES_VARS[ci] + ")'></span>" + cutoffLabel(c) + "</td>" +
+            "<td>" + row.timesteps + "</td>" +
+            "<td>" + (row.converged ? "yes" : "no") + "</td>" +
+            "<td class='emph'>" + row.ms.toFixed(1) + "</td>" +
+            "<td class='emph'>" + (row.ms / 1000).toFixed(2) + "</td>" +
+            "<td class='mono-cmd'>" + reproCmd(row) + "</td>";
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    wireTab({
+      noticeEl: document.getElementById("co-notice"),
+      defaultCsv: DEFAULT_CO_CSV,
+      buildModel: buildModel,
+      render: render,
+      btnChart: document.getElementById("co-btn-chart"),
+      btnTable: document.getElementById("co-btn-table"),
+      chartFrame: chartFrame,
+      tableWrap: document.getElementById("co-table-wrap"),
+      btnLoad: document.getElementById("co-btn-load"),
+      fileInput: document.getElementById("co-file-input"),
+      btnReset: document.getElementById("co-btn-reset"),
+      btnExportPng: document.getElementById("co-btn-export-png"),
+      svg: svg,
+      filePrefix: "fireline-cutoff-chart"
+    });
+  })();
+
+
+    // ================= tab: serial vs parallel =================
+  (function () {
+      var DEFAULT_SP_CSV = [
+    '# Serial vs parallel seed sweep - 2026-08-24T01:05:24Z',
+    '# Fixed simulation parameters: mode=wildfire landscape=grass max_steps=50000 tolerance=0.05',
+    '# FireTask.SEQUENTIAL_CUTOFF at run time (unmodified by this script): 50000',
+    '# To recreate any row by hand, run the exact command in the \'command\' column below (from FirelineSerial/src, after \'make all\')',
+    'implementation,rows,columns,seed,mode,landscape,max_steps,tolerance,cutoff,timesteps,converged,burning_cells,cells_burned,max_peak_temperature,max_temperature_change,core_ms,command',
+    'FirelineParallel,300,300,1,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6435.460,"java -cp bin FirelineParallel 300 300 1 wildfire output/firelineparallel_300x300_seed1 50000 0.05 grass"',
+    'FirelineSerial,300,300,1,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,5946.619,"java -cp bin FirelineSerial 300 300 1 wildfire output/firelineserial_300x300_seed1 50000 0.05 grass"',
+    'FirelineParallel,300,300,2,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6285.971,"java -cp bin FirelineParallel 300 300 2 wildfire output/firelineparallel_300x300_seed2 50000 0.05 grass"',
+    'FirelineSerial,300,300,2,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,5884.945,"java -cp bin FirelineSerial 300 300 2 wildfire output/firelineserial_300x300_seed2 50000 0.05 grass"',
+    'FirelineParallel,300,300,3,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6248.281,"java -cp bin FirelineParallel 300 300 3 wildfire output/firelineparallel_300x300_seed3 50000 0.05 grass"',
+    'FirelineSerial,300,300,3,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6057.068,"java -cp bin FirelineSerial 300 300 3 wildfire output/firelineserial_300x300_seed3 50000 0.05 grass"',
+    'FirelineParallel,300,300,4,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6292.826,"java -cp bin FirelineParallel 300 300 4 wildfire output/firelineparallel_300x300_seed4 50000 0.05 grass"',
+    'FirelineSerial,300,300,4,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,5892.910,"java -cp bin FirelineSerial 300 300 4 wildfire output/firelineserial_300x300_seed4 50000 0.05 grass"',
+    'FirelineParallel,300,300,5,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6120.376,"java -cp bin FirelineParallel 300 300 5 wildfire output/firelineparallel_300x300_seed5 50000 0.05 grass"',
+    'FirelineSerial,300,300,5,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,5951.674,"java -cp bin FirelineSerial 300 300 5 wildfire output/firelineserial_300x300_seed5 50000 0.05 grass"',
+    'FirelineParallel,300,300,6,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6114.966,"java -cp bin FirelineParallel 300 300 6 wildfire output/firelineparallel_300x300_seed6 50000 0.05 grass"',
+    'FirelineSerial,300,300,6,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6654.314,"java -cp bin FirelineSerial 300 300 6 wildfire output/firelineserial_300x300_seed6 50000 0.05 grass"',
+    'FirelineParallel,300,300,7,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6694.366,"java -cp bin FirelineParallel 300 300 7 wildfire output/firelineparallel_300x300_seed7 50000 0.05 grass"',
+    'FirelineSerial,300,300,7,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6329.438,"java -cp bin FirelineSerial 300 300 7 wildfire output/firelineserial_300x300_seed7 50000 0.05 grass"',
+    'FirelineParallel,300,300,8,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,7777.586,"java -cp bin FirelineParallel 300 300 8 wildfire output/firelineparallel_300x300_seed8 50000 0.05 grass"',
+    'FirelineSerial,300,300,8,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6688.954,"java -cp bin FirelineSerial 300 300 8 wildfire output/firelineserial_300x300_seed8 50000 0.05 grass"',
+    'FirelineParallel,300,300,9,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6270.730,"java -cp bin FirelineParallel 300 300 9 wildfire output/firelineparallel_300x300_seed9 50000 0.05 grass"',
+    'FirelineSerial,300,300,9,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6078.544,"java -cp bin FirelineSerial 300 300 9 wildfire output/firelineserial_300x300_seed9 50000 0.05 grass"',
+    'FirelineParallel,300,300,10,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,6345.146,"java -cp bin FirelineParallel 300 300 10 wildfire output/firelineparallel_300x300_seed10 50000 0.05 grass"',
+    'FirelineSerial,300,300,10,wildfire,grass,50000,0.05,50000,4678,yes,0,88804,615.508,0.049374,5992.569,"java -cp bin FirelineSerial 300 300 10 wildfire output/firelineserial_300x300_seed10 50000 0.05 grass"',
+    'FirelineParallel,400,400,1,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14797.950,"java -cp bin FirelineParallel 400 400 1 wildfire output/firelineparallel_400x400_seed1 50000 0.05 grass"',
+    'FirelineSerial,400,400,1,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14584.785,"java -cp bin FirelineSerial 400 400 1 wildfire output/firelineserial_400x400_seed1 50000 0.05 grass"',
+    'FirelineParallel,400,400,2,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,16188.006,"java -cp bin FirelineParallel 400 400 2 wildfire output/firelineparallel_400x400_seed2 50000 0.05 grass"',
+    'FirelineSerial,400,400,2,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,18366.375,"java -cp bin FirelineSerial 400 400 2 wildfire output/firelineserial_400x400_seed2 50000 0.05 grass"',
+    'FirelineParallel,400,400,3,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15267.042,"java -cp bin FirelineParallel 400 400 3 wildfire output/firelineparallel_400x400_seed3 50000 0.05 grass"',
+    'FirelineSerial,400,400,3,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15037.704,"java -cp bin FirelineSerial 400 400 3 wildfire output/firelineserial_400x400_seed3 50000 0.05 grass"',
+    'FirelineParallel,400,400,4,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15229.459,"java -cp bin FirelineParallel 400 400 4 wildfire output/firelineparallel_400x400_seed4 50000 0.05 grass"',
+    'FirelineSerial,400,400,4,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,13875.957,"java -cp bin FirelineSerial 400 400 4 wildfire output/firelineserial_400x400_seed4 50000 0.05 grass"',
+    'FirelineParallel,400,400,5,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14358.494,"java -cp bin FirelineParallel 400 400 5 wildfire output/firelineparallel_400x400_seed5 50000 0.05 grass"',
+    'FirelineSerial,400,400,5,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14631.633,"java -cp bin FirelineSerial 400 400 5 wildfire output/firelineserial_400x400_seed5 50000 0.05 grass"',
+    'FirelineParallel,400,400,6,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15079.067,"java -cp bin FirelineParallel 400 400 6 wildfire output/firelineparallel_400x400_seed6 50000 0.05 grass"',
+    'FirelineSerial,400,400,6,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14954.713,"java -cp bin FirelineSerial 400 400 6 wildfire output/firelineserial_400x400_seed6 50000 0.05 grass"',
+    'FirelineParallel,400,400,7,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15885.338,"java -cp bin FirelineParallel 400 400 7 wildfire output/firelineparallel_400x400_seed7 50000 0.05 grass"',
+    'FirelineSerial,400,400,7,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15195.329,"java -cp bin FirelineSerial 400 400 7 wildfire output/firelineserial_400x400_seed7 50000 0.05 grass"',
+    'FirelineParallel,400,400,8,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,16048.160,"java -cp bin FirelineParallel 400 400 8 wildfire output/firelineparallel_400x400_seed8 50000 0.05 grass"',
+    'FirelineSerial,400,400,8,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14722.787,"java -cp bin FirelineSerial 400 400 8 wildfire output/firelineserial_400x400_seed8 50000 0.05 grass"',
+    'FirelineParallel,400,400,9,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14536.662,"java -cp bin FirelineParallel 400 400 9 wildfire output/firelineparallel_400x400_seed9 50000 0.05 grass"',
+    'FirelineSerial,400,400,9,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,15256.070,"java -cp bin FirelineSerial 400 400 9 wildfire output/firelineserial_400x400_seed9 50000 0.05 grass"',
+    'FirelineParallel,400,400,10,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,16202.522,"java -cp bin FirelineParallel 400 400 10 wildfire output/firelineparallel_400x400_seed10 50000 0.05 grass"',
+    'FirelineSerial,400,400,10,wildfire,grass,50000,0.05,50000,6298,yes,0,158404,615.508,0.049373,14645.335,"java -cp bin FirelineSerial 400 400 10 wildfire output/firelineserial_400x400_seed10 50000 0.05 grass"',
+    'FirelineParallel,500,500,1,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29432.220,"java -cp bin FirelineParallel 500 500 1 wildfire output/firelineparallel_500x500_seed1 50000 0.05 grass"',
+    'FirelineSerial,500,500,1,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29269.386,"java -cp bin FirelineSerial 500 500 1 wildfire output/firelineserial_500x500_seed1 50000 0.05 grass"',
+    'FirelineParallel,500,500,2,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28709.077,"java -cp bin FirelineParallel 500 500 2 wildfire output/firelineparallel_500x500_seed2 50000 0.05 grass"',
+    'FirelineSerial,500,500,2,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,31401.384,"java -cp bin FirelineSerial 500 500 2 wildfire output/firelineserial_500x500_seed2 50000 0.05 grass"',
+    'FirelineParallel,500,500,3,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28713.262,"java -cp bin FirelineParallel 500 500 3 wildfire output/firelineparallel_500x500_seed3 50000 0.05 grass"',
+    'FirelineSerial,500,500,3,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28175.484,"java -cp bin FirelineSerial 500 500 3 wildfire output/firelineserial_500x500_seed3 50000 0.05 grass"',
+    'FirelineParallel,500,500,4,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28234.426,"java -cp bin FirelineParallel 500 500 4 wildfire output/firelineparallel_500x500_seed4 50000 0.05 grass"',
+    'FirelineSerial,500,500,4,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,27657.006,"java -cp bin FirelineSerial 500 500 4 wildfire output/firelineserial_500x500_seed4 50000 0.05 grass"',
+    'FirelineParallel,500,500,5,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28061.130,"java -cp bin FirelineParallel 500 500 5 wildfire output/firelineparallel_500x500_seed5 50000 0.05 grass"',
+    'FirelineSerial,500,500,5,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,31040.000,"java -cp bin FirelineSerial 500 500 5 wildfire output/firelineserial_500x500_seed5 50000 0.05 grass"',
+    'FirelineParallel,500,500,6,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,30241.285,"java -cp bin FirelineParallel 500 500 6 wildfire output/firelineparallel_500x500_seed6 50000 0.05 grass"',
+    'FirelineSerial,500,500,6,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,32190.045,"java -cp bin FirelineSerial 500 500 6 wildfire output/firelineserial_500x500_seed6 50000 0.05 grass"',
+    'FirelineParallel,500,500,7,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29847.550,"java -cp bin FirelineParallel 500 500 7 wildfire output/firelineparallel_500x500_seed7 50000 0.05 grass"',
+    'FirelineSerial,500,500,7,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,32430.588,"java -cp bin FirelineSerial 500 500 7 wildfire output/firelineserial_500x500_seed7 50000 0.05 grass"',
+    'FirelineParallel,500,500,8,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,33034.039,"java -cp bin FirelineParallel 500 500 8 wildfire output/firelineparallel_500x500_seed8 50000 0.05 grass"',
+    'FirelineSerial,500,500,8,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,31063.954,"java -cp bin FirelineSerial 500 500 8 wildfire output/firelineserial_500x500_seed8 50000 0.05 grass"',
+    'FirelineParallel,500,500,9,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,28960.105,"java -cp bin FirelineParallel 500 500 9 wildfire output/firelineparallel_500x500_seed9 50000 0.05 grass"',
+    'FirelineSerial,500,500,9,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29202.703,"java -cp bin FirelineSerial 500 500 9 wildfire output/firelineserial_500x500_seed9 50000 0.05 grass"',
+    'FirelineParallel,500,500,10,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29298.709,"java -cp bin FirelineParallel 500 500 10 wildfire output/firelineparallel_500x500_seed10 50000 0.05 grass"',
+    'FirelineSerial,500,500,10,wildfire,grass,50000,0.05,50000,7918,yes,0,248004,615.508,0.049373,29787.326,"java -cp bin FirelineSerial 500 500 10 wildfire output/firelineserial_500x500_seed10 50000 0.05 grass"',
+    'FirelineParallel,600,600,1,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,53947.527,"java -cp bin FirelineParallel 600 600 1 wildfire output/firelineparallel_600x600_seed1 50000 0.05 grass"',
+    'FirelineSerial,600,600,1,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,52556.707,"java -cp bin FirelineSerial 600 600 1 wildfire output/firelineserial_600x600_seed1 50000 0.05 grass"',
+    'FirelineParallel,600,600,2,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,56465.663,"java -cp bin FirelineParallel 600 600 2 wildfire output/firelineparallel_600x600_seed2 50000 0.05 grass"',
+    'FirelineSerial,600,600,2,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,59144.699,"java -cp bin FirelineSerial 600 600 2 wildfire output/firelineserial_600x600_seed2 50000 0.05 grass"',
+    'FirelineParallel,600,600,3,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,57566.939,"java -cp bin FirelineParallel 600 600 3 wildfire output/firelineparallel_600x600_seed3 50000 0.05 grass"',
+    'FirelineSerial,600,600,3,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,51515.932,"java -cp bin FirelineSerial 600 600 3 wildfire output/firelineserial_600x600_seed3 50000 0.05 grass"',
+    'FirelineParallel,600,600,4,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,51664.480,"java -cp bin FirelineParallel 600 600 4 wildfire output/firelineparallel_600x600_seed4 50000 0.05 grass"',
+    'FirelineSerial,600,600,4,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,55987.059,"java -cp bin FirelineSerial 600 600 4 wildfire output/firelineserial_600x600_seed4 50000 0.05 grass"',
+    'FirelineParallel,600,600,5,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,52597.466,"java -cp bin FirelineParallel 600 600 5 wildfire output/firelineparallel_600x600_seed5 50000 0.05 grass"',
+    'FirelineSerial,600,600,5,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,50965.897,"java -cp bin FirelineSerial 600 600 5 wildfire output/firelineserial_600x600_seed5 50000 0.05 grass"',
+    'FirelineParallel,600,600,6,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,53409.040,"java -cp bin FirelineParallel 600 600 6 wildfire output/firelineparallel_600x600_seed6 50000 0.05 grass"',
+    'FirelineSerial,600,600,6,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,51808.087,"java -cp bin FirelineSerial 600 600 6 wildfire output/firelineserial_600x600_seed6 50000 0.05 grass"',
+    'FirelineParallel,600,600,7,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,52754.513,"java -cp bin FirelineParallel 600 600 7 wildfire output/firelineparallel_600x600_seed7 50000 0.05 grass"',
+    'FirelineSerial,600,600,7,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,60558.451,"java -cp bin FirelineSerial 600 600 7 wildfire output/firelineserial_600x600_seed7 50000 0.05 grass"',
+    'FirelineParallel,600,600,8,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,60649.060,"java -cp bin FirelineParallel 600 600 8 wildfire output/firelineparallel_600x600_seed8 50000 0.05 grass"',
+    'FirelineSerial,600,600,8,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,59432.089,"java -cp bin FirelineSerial 600 600 8 wildfire output/firelineserial_600x600_seed8 50000 0.05 grass"',
+    'FirelineParallel,600,600,9,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,58187.184,"java -cp bin FirelineParallel 600 600 9 wildfire output/firelineparallel_600x600_seed9 50000 0.05 grass"',
+    'FirelineSerial,600,600,9,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,57553.997,"java -cp bin FirelineSerial 600 600 9 wildfire output/firelineserial_600x600_seed9 50000 0.05 grass"',
+    'FirelineParallel,600,600,10,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,49924.788,"java -cp bin FirelineParallel 600 600 10 wildfire output/firelineparallel_600x600_seed10 50000 0.05 grass"',
+    'FirelineSerial,600,600,10,wildfire,grass,50000,0.05,50000,9538,yes,0,357604,615.508,0.049373,49034.138,"java -cp bin FirelineSerial 600 600 10 wildfire output/firelineserial_600x600_seed10 50000 0.05 grass"',
+    'FirelineParallel,700,700,1,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,78792.494,"java -cp bin FirelineParallel 700 700 1 wildfire output/firelineparallel_700x700_seed1 50000 0.05 grass"',
+    'FirelineSerial,700,700,1,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,77537.602,"java -cp bin FirelineSerial 700 700 1 wildfire output/firelineserial_700x700_seed1 50000 0.05 grass"',
+    'FirelineParallel,700,700,2,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,77731.319,"java -cp bin FirelineParallel 700 700 2 wildfire output/firelineparallel_700x700_seed2 50000 0.05 grass"',
+    'FirelineSerial,700,700,2,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,77365.043,"java -cp bin FirelineSerial 700 700 2 wildfire output/firelineserial_700x700_seed2 50000 0.05 grass"',
+    'FirelineParallel,700,700,3,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,78940.232,"java -cp bin FirelineParallel 700 700 3 wildfire output/firelineparallel_700x700_seed3 50000 0.05 grass"',
+    'FirelineSerial,700,700,3,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,76525.733,"java -cp bin FirelineSerial 700 700 3 wildfire output/firelineserial_700x700_seed3 50000 0.05 grass"',
+    'FirelineParallel,700,700,4,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,76402.362,"java -cp bin FirelineParallel 700 700 4 wildfire output/firelineparallel_700x700_seed4 50000 0.05 grass"',
+    'FirelineSerial,700,700,4,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,92386.619,"java -cp bin FirelineSerial 700 700 4 wildfire output/firelineserial_700x700_seed4 50000 0.05 grass"',
+    'FirelineParallel,700,700,5,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,89633.968,"java -cp bin FirelineParallel 700 700 5 wildfire output/firelineparallel_700x700_seed5 50000 0.05 grass"',
+    'FirelineSerial,700,700,5,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,87783.760,"java -cp bin FirelineSerial 700 700 5 wildfire output/firelineserial_700x700_seed5 50000 0.05 grass"',
+    'FirelineParallel,700,700,6,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,93272.259,"java -cp bin FirelineParallel 700 700 6 wildfire output/firelineparallel_700x700_seed6 50000 0.05 grass"',
+    'FirelineSerial,700,700,6,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,93123.542,"java -cp bin FirelineSerial 700 700 6 wildfire output/firelineserial_700x700_seed6 50000 0.05 grass"',
+    'FirelineParallel,700,700,7,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,92639.819,"java -cp bin FirelineParallel 700 700 7 wildfire output/firelineparallel_700x700_seed7 50000 0.05 grass"',
+    'FirelineSerial,700,700,7,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,94099.804,"java -cp bin FirelineSerial 700 700 7 wildfire output/firelineserial_700x700_seed7 50000 0.05 grass"',
+    'FirelineParallel,700,700,8,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,92645.720,"java -cp bin FirelineParallel 700 700 8 wildfire output/firelineparallel_700x700_seed8 50000 0.05 grass"',
+    'FirelineSerial,700,700,8,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,92917.836,"java -cp bin FirelineSerial 700 700 8 wildfire output/firelineserial_700x700_seed8 50000 0.05 grass"',
+    'FirelineParallel,700,700,9,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,109254.056,"java -cp bin FirelineParallel 700 700 9 wildfire output/firelineparallel_700x700_seed9 50000 0.05 grass"',
+    'FirelineSerial,700,700,9,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,79238.061,"java -cp bin FirelineSerial 700 700 9 wildfire output/firelineserial_700x700_seed9 50000 0.05 grass"',
+    'FirelineParallel,700,700,10,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,76151.906,"java -cp bin FirelineParallel 700 700 10 wildfire output/firelineparallel_700x700_seed10 50000 0.05 grass"',
+    'FirelineSerial,700,700,10,wildfire,grass,50000,0.05,50000,11158,yes,0,487204,615.508,0.049373,75405.054,"java -cp bin FirelineSerial 700 700 10 wildfire output/firelineserial_700x700_seed10 50000 0.05 grass"'
+  ].join("\n");
+
+    function buildModel(parsed) {
+      if (!parsed.header || !parsed.rows.length) {
+        throw new Error("No data rows found (expected a CSV header row plus data rows).");
+      }
+      var required = ["implementation", "rows", "seed", "core_ms"];
+      for (var r = 0; r < required.length; r++) {
+        if (parsed.header.indexOf(required[r]) === -1) {
+          throw new Error("Missing required column '" + required[r] + "'.");
+        }
+      }
+
+      var parallelByKey = {}, serialByKey = {};
+      parsed.rows.forEach(function (row) {
+        var impl = (row.implementation || "").toLowerCase();
+        var n = parseInt(row.rows, 10);
+        var seed = row.seed;
+        var ms = parseFloat(row.core_ms);
+        if (!isFinite(n) || !isFinite(ms) || !seed) return;
+        var key = n + "|" + seed;
+        var entry = {
+          n: n, seed: seed, ms: ms, timesteps: row.timesteps,
+          converged: (row.converged || "").trim().toLowerCase() === "yes",
+          command: (row.command || "").trim(),
+          mode: row.mode, landscape: row.landscape, max_steps: row.max_steps,
+          tolerance: row.tolerance, cutoff: row.cutoff
+        };
+        if (impl.indexOf("parallel") !== -1) parallelByKey[key] = entry;
+        else if (impl.indexOf("serial") !== -1) serialByKey[key] = entry;
+      });
+
+      var pairs = [];
+      Object.keys(parallelByKey).forEach(function (key) {
+        if (serialByKey[key]) {
+          var p = parallelByKey[key], s = serialByKey[key];
+          pairs.push({
+            n: p.n, seed: p.seed, parallelMs: p.ms, serialMs: s.ms, speedup: s.ms / p.ms,
+            timesteps: p.timesteps, converged: p.converged && s.converged,
+            parallelCommand: p.command, serialCommand: s.command,
+            mode: p.mode, landscape: p.landscape, cutoff: p.cutoff,
+            maxSteps: p.max_steps, tolerance: p.tolerance
+          });
+        }
+      });
+
+      if (!pairs.length) {
+        throw new Error("No matching FirelineParallel/FirelineSerial (rows, seed) pairs found. " +
+          "This chart needs both implementations run with the same grid size and seed.");
+      }
+
+      var matchedKeys = {};
+      pairs.forEach(function (p) { matchedKeys[p.n + "|" + p.seed] = true; });
+      var unmatchedCount = 0;
+      Object.keys(parallelByKey).forEach(function (k) { if (!matchedKeys[k]) unmatchedCount++; });
+      Object.keys(serialByKey).forEach(function (k) { if (!matchedKeys[k]) unmatchedCount++; });
+
+      var sizes = [];
+      pairs.forEach(function (p) { if (sizes.indexOf(p.n) === -1) sizes.push(p.n); });
+      sizes.sort(function (a, b) { return a - b; });
+
+      var byN = {};
+      sizes.forEach(function (n) {
+        var group = pairs.filter(function (p) { return p.n === n; });
+        var speedups = group.map(function (p) { return p.speedup; });
+        var mean = speedups.reduce(function (a, b) { return a + b; }, 0) / speedups.length;
+        var sorted = speedups.slice().sort(function (a, b) { return a - b; });
+        var mid = Math.floor(sorted.length / 2);
+        var median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        var variance = speedups.length > 1
+          ? speedups.reduce(function (a, b) { return a + Math.pow(b - mean, 2); }, 0) / (speedups.length - 1)
+          : 0;
+        var sd = Math.sqrt(variance);
+        var meanParallelMs = group.reduce(function (a, p) { return a + p.parallelMs; }, 0) / group.length;
+        var meanSerialMs = group.reduce(function (a, p) { return a + p.serialMs; }, 0) / group.length;
+        byN[n] = {
+          n: n, pairs: group, count: group.length, mean: mean, median: median,
+          sd: sd, variance: variance, meanParallelMs: meanParallelMs, meanSerialMs: meanSerialMs
+        };
+      });
+
+      return {
+        sizes: sizes, byN: byN, pairCount: pairs.length, unmatchedCount: unmatchedCount,
+        fixedParams: {
+          mode: pairs[0].mode, landscape: pairs[0].landscape,
+          max_steps: pairs[0].maxSteps, tolerance: pairs[0].tolerance, cutoff: pairs[0].cutoff
+        }
+      };
+    }
+
+    var svg = document.getElementById("sp-chart-svg");
+    var legend = document.getElementById("sp-legend");
+    var tbody = document.getElementById("sp-table-body");
+    var provenanceEl = document.getElementById("sp-provenance");
+    var chartFrame = document.getElementById("sp-chart-frame");
+    var statsEl = document.getElementById("sp-stats");
+
+    function fmtX(v) { return v.toFixed(2) + "×"; }
+
+    function render(model, sourceText, notice) {
+      var sizes = model.sizes;
+
+      legend.innerHTML = "";
+      var item = document.createElement("span");
+      item.className = "legend-item";
+      var sw = document.createElement("span");
+      sw.className = "legend-swatch";
+      sw.style.background = "var(--series-1)";
+      var label = document.createElement("span");
+      label.className = "legend-note";
+      label.textContent = "Mean speedup per grid size (±1 SD), matched (n, seed) runs";
+      item.appendChild(sw);
+      item.appendChild(label);
+      legend.appendChild(item);
+
+      var fp = model.fixedParams;
+      var fixedBits = [];
+      if (fp.mode) fixedBits.push("mode " + fp.mode);
+      if (fp.landscape) fixedBits.push("landscape " + fp.landscape);
+      if (fp.cutoff) fixedBits.push("cutoff " + fp.cutoff);
+      if (fp.max_steps) fixedBits.push("max-steps " + fp.max_steps);
+      if (fp.tolerance) fixedBits.push("tolerance " + fp.tolerance);
+      provenanceEl.innerHTML =
+        "Source: <code>" + sourceText + "</code> — " + model.pairCount + " matched pair(s) across " +
+        sizes.length + " grid size(s)" +
+        (model.unmatchedCount ? "; " + model.unmatchedCount + " row(s) had no counterpart and were excluded" : "") +
+        (fixedBits.length ? ". Fixed parameters (from first row): " + fixedBits.join(", ") + "." : ".");
+
+      if (model.unmatchedCount) {
+        notice.show(model.unmatchedCount + " row(s) in this file had no matching Parallel/Serial counterpart for the same (rows, seed) and were excluded from the chart and statistics.", false);
+      } else {
+        notice.clear();
+      }
+
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      var W = 960, H = 460;
+      var margin = { top: 30, right: 16, bottom: 46, left: 58 };
+      var plotW = W - margin.left - margin.right;
+      var plotH = H - margin.top - margin.bottom;
+      var baselineY = margin.top + plotH;
+
+      if (!sizes.length) {
+        var empty = el("text", { class: "empty-label", x: W / 2, y: H / 2, "text-anchor": "middle" });
+        empty.textContent = "No data to display.";
+        svg.appendChild(empty);
+        tbody.innerHTML = "";
+        statsEl.innerHTML = "";
+        return;
+      }
+
+      var maxStat = 0;
+      sizes.forEach(function (n) {
+        var s = model.byN[n];
+        maxStat = Math.max(maxStat, s.mean + s.sd);
+      });
+      var axisInput = Math.max(maxStat, 1.05);
+      var axis = niceAxis(axisInput);
+      var niceMax = axis.max, tickStep = axis.step;
+
+      function yFor(v) { return margin.top + plotH - (v / niceMax) * plotH; }
+
+      var groupW = plotW / sizes.length;
+      var barW = Math.max(18, Math.min(46, groupW * 0.42));
+
+      for (var v = 0; v <= niceMax + 1e-9; v += tickStep) {
+        var gy = yFor(v);
+        svg.appendChild(el("line", { class: "gridline", x1: margin.left, x2: margin.left + plotW, y1: gy, y2: gy }));
+        var t = el("text", { class: "tick-label", x: margin.left - 8, y: gy + 3, "text-anchor": "end" });
+        t.textContent = (Math.round(v * 100) / 100).toString();
+        svg.appendChild(t);
+      }
+      var axisTitle = el("text", { class: "axis-title", x: margin.left, y: 12, "text-anchor": "start" });
+      axisTitle.textContent = "Speedup S = T₁ / Tₚ";
+      svg.appendChild(axisTitle);
+
+      svg.appendChild(el("line", { class: "baseline", x1: margin.left, x2: margin.left + plotW, y1: baselineY, y2: baselineY }));
+
+      if (1 <= niceMax) {
+        var refY = yFor(1);
+        svg.appendChild(el("line", { class: "ref-line", x1: margin.left, x2: margin.left + plotW, y1: refY, y2: refY }));
+        var refLabel = el("text", { class: "ref-label", x: margin.left + plotW, y: refY - 4, "text-anchor": "end" });
+        refLabel.textContent = "S = 1 (no speedup)";
+        svg.appendChild(refLabel);
+      }
+
+      sizes.forEach(function (n, gi) {
+        var groupX = margin.left + gi * groupW;
+        var stat = model.byN[n];
+        var bx = groupX + (groupW - barW) / 2;
+
+        var meanY = yFor(stat.mean);
+        var barH = baselineY - meanY;
+
+        var whiskerTopV = stat.mean + stat.sd;
+        var whiskerBotV = Math.max(0, stat.mean - stat.sd);
+        var whiskerTopY = yFor(whiskerTopV);
+        var whiskerBotY = yFor(whiskerBotV);
+
+        var g = el("g", {
+          class: "bar-hit", tabindex: "0", role: "img",
+          "aria-label": "n = " + n + " by " + n + ", mean speedup " + stat.mean.toFixed(2) + " (SD " + stat.sd.toFixed(3) + ")"
+        });
+        var ring = el("path", {
+          class: "focus-ring", d: roundedTopBarPath(bx - 2, meanY - 2, barW + 4, barH + 2, 6),
+          fill: "none", stroke: "transparent", "stroke-width": "2"
+        });
+        var bar = el("path", {
+          d: roundedTopBarPath(bx, meanY, barW, barH, 4),
+          style: "fill: var(--series-1)"
+        });
+
+        g.appendChild(ring);
+        g.appendChild(bar);
+        svg.appendChild(g);
+
+        if (stat.count > 1) {
+          var cx = bx + barW / 2;
+          svg.appendChild(el("line", { class: "whisker", x1: cx, x2: cx, y1: whiskerTopY, y2: whiskerBotY }));
+          svg.appendChild(el("line", { class: "whisker", x1: cx - 5, x2: cx + 5, y1: whiskerTopY, y2: whiskerTopY }));
+          svg.appendChild(el("line", { class: "whisker", x1: cx - 5, x2: cx + 5, y1: whiskerBotY, y2: whiskerBotY }));
+        }
+
+        var labelY = Math.min(meanY, whiskerTopY) - 8;
+        var valueLabel = el("text", { class: "value-label", "text-anchor": "middle", x: bx + barW / 2, y: labelY });
+        valueLabel.textContent = fmtX(stat.mean);
+        svg.appendChild(valueLabel);
+
+        var glabel = el("text", { class: "group-label", x: groupX + groupW / 2, y: baselineY + 22, "text-anchor": "middle" });
+        glabel.textContent = n + "×" + n;
+        svg.appendChild(glabel);
+
+        function show(evt) {
+          tooltip.innerHTML =
+            "<b>" + n + "×" + n + "</b><br>" +
+            "mean speedup " + stat.mean.toFixed(3) + " (±" + stat.sd.toFixed(3) + " SD)<br>" +
+            "<span class='tt-muted'>median " + stat.median.toFixed(3) + " · " + stat.count + " seed pairs</span><br>" +
+            "<span class='tt-muted'>mean parallel " + stat.meanParallelMs.toFixed(1) + " ms · mean serial " + stat.meanSerialMs.toFixed(1) + " ms</span>";
+          tooltip.classList.add("visible");
+          position(evt);
+        }
+        function position(evt) {
+          var pad = 14, px, py;
+          if (evt && evt.clientX !== undefined) { px = evt.clientX; py = evt.clientY; }
+          else { var box = bar.getBoundingClientRect(); px = box.left + box.width / 2; py = box.top; }
+          tooltip.style.left = Math.min(px + pad, window.innerWidth - 280) + "px";
+          tooltip.style.top = Math.max(py - 46, 8) + "px";
+        }
+        function hide() { tooltip.classList.remove("visible"); }
+
+        g.addEventListener("mouseenter", show);
+        g.addEventListener("mousemove", show);
+        g.addEventListener("mouseleave", hide);
+        g.addEventListener("focus", show);
+        g.addEventListener("blur", hide);
+      });
+
+      var xAxisTitle = el("text", { class: "axis-title", x: margin.left + plotW / 2, y: H - 6, "text-anchor": "middle" });
+      xAxisTitle.textContent = "n (grid size, n × n)";
+      svg.appendChild(xAxisTitle);
+
+      tbody.innerHTML = "";
+      sizes.forEach(function (n) {
+        var group = model.byN[n].pairs.slice().sort(function (a, b) {
+          return ("" + a.seed).localeCompare("" + b.seed, undefined, { numeric: true });
+        });
+        group.forEach(function (p) {
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + n + "×" + n + "</td>" +
+            "<td>" + p.seed + "</td>" +
+            "<td class='emph'>" + p.parallelMs.toFixed(1) + "</td>" +
+            "<td class='emph'>" + p.serialMs.toFixed(1) + "</td>" +
+            "<td class='emph'>" + p.speedup.toFixed(3) + "</td>" +
+            "<td>" + (p.converged ? "yes" : "no") + "</td>" +
+            "<td class='mono-cmd'>" + (p.parallelCommand || "") + "</td>" +
+            "<td class='mono-cmd'>" + (p.serialCommand || "") + "</td>";
+          tbody.appendChild(tr);
+        });
+      });
+
+      statsEl.innerHTML = "";
+      sizes.forEach(function (n) {
+        var s = model.byN[n];
+        var pct = (s.mean - 1) * 100;
+        var faster = pct >= 0;
+        var card = document.createElement("div");
+        card.className = "stat-card";
+        card.innerHTML =
+          "<div class='stat-card-head'><span class='legend-swatch' style='background:var(--series-1)'></span><span class='stat-card-n'>" + n + "×" + n + "</span></div>" +
+          "<dl class='stat-list'>" +
+            "<div><dt>Mean speedup</dt><dd>" + fmtX(s.mean) + "</dd></div>" +
+            "<div><dt>Median</dt><dd>" + fmtX(s.median) + "</dd></div>" +
+            "<div><dt>SD</dt><dd>" + s.sd.toFixed(3) + "</dd></div>" +
+            "<div><dt>Variance</dt><dd>" + s.variance.toFixed(4) + "</dd></div>" +
+          "</dl>" +
+          "<div class='stat-compare'>" +
+            "<span class='compare-badge " + (faster ? "faster" : "slower") + "'>" + (faster ? "▲ " : "▼ ") + Math.abs(pct).toFixed(1) + "% " + (faster ? "faster" : "slower") + "</span> " +
+            "<span class='compare-detail'>than serial on average, across " + s.count + " seed pair(s) (mean " + s.meanParallelMs.toFixed(0) + " ms parallel vs " + s.meanSerialMs.toFixed(0) + " ms serial).</span>" +
+          "</div>";
+        statsEl.appendChild(card);
+      });
+    }
+
+    wireTab({
+      noticeEl: document.getElementById("sp-notice"),
+      defaultCsv: DEFAULT_SP_CSV,
+      buildModel: buildModel,
+      render: render,
+      btnChart: document.getElementById("sp-btn-chart"),
+      btnTable: document.getElementById("sp-btn-table"),
+      chartFrame: chartFrame,
+      tableWrap: document.getElementById("sp-table-wrap"),
+      btnLoad: document.getElementById("sp-btn-load"),
+      fileInput: document.getElementById("sp-file-input"),
+      btnReset: document.getElementById("sp-btn-reset"),
+      btnExportPng: document.getElementById("sp-btn-export-png"),
+      svg: svg,
+      filePrefix: "fireline-speedup-chart"
+    });
+  })();
+
+})();
+</script>

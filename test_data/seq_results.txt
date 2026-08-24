@@ -1,0 +1,6 @@
+parallel,75000,700,700,42,wildfire,grass,50000,0.05,11158,yes,0,487204,615.508,0.049373,82209.279,"java -cp bin FirelineParallel 700 700 42 wildfire output/cutoff_75000_700x700 50000 0.05 grass"
+parallel,100000,300,300,42,wildfire,grass,50000,0.05,4678,yes,0,88804,615.508,0.049374,8509.665,"java -cp bin FirelineParallel 300 300 42 wildfire output/cutoff_100000_300x300 50000 0.05 grass"
+parallel,100000,400,400,42,wildfire,grass,50000,0.05,6298,yes,0,158404,615.508,0.049373,19054.888,"java -cp bin FirelineParallel 400 400 42 wildfire output/cutoff_100000_400x400 50000 0.05 grass"
+parallel,100000,500,500,42,wildfire,grass,50000,0.05,7918,yes,0,248004,615.508,0.049373,36982.023,"java -cp bin FirelineParallel 500 500 42 wildfire output/cutoff_100000_500x500 50000 0.05 grass"
+parallel,100000,600,600,42,wildfire,grass,50000,0.05,9538,yes,0,357604,615.508,0.049373,62171.105,"java -cp bin FirelineParallel 600 600 42 wildfire output/cutoff_100000_600x600 50000 0.05 grass"
+parallel,100000,700,700,42,wildfire,grass,50000,0.05,11158,yes,0,487204,615.508,0.049373,99728.749,"java -cp bin FirelineParallel 700 700 42 wildfire output/cutoff_100000_700x700 50000 0.05 grass"
