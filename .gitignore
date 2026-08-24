@@ -1,0 +1,13 @@
+# Build output
+bin/
+src/bin/
+
+# Generated simulation images
+output/
+src/output/
+
+# macOS
+.DS_Store
+
+# Editor/IDE noise (Eclipse metadata is kept: .classpath/.project/.settings)
+*.swp
